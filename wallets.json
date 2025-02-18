@@ -1,2 +1,4 @@
-Your private keys here
-Your private keys here
+[
+    { "address": "0xYourAddress1", "privateKey": "your-private-key-1" },
+    { "address": "0xYourAddress2", "privateKey": "your-private-key-2" }
+]
