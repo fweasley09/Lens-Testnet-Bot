@@ -1,5 +1,6 @@
 require('dotenv').config();
 const Web3 = require('web3');
+const { HttpProvider } = require('web3'); // Explicitly import HttpProvider for Web3.js v4
 const fs = require('fs');
 
 // Load wallets from wallets.json
@@ -7,10 +8,10 @@ const wallets = require('./wallets.json');
 
 // Public RPC URLs (No API key needed)
 const SEPOLIA_RPC = "https://ethereum-sepolia.publicnode.com";
-const LENS_RPC = "https://rpc.lens.dev"; // Replace if needed
+const LENS_RPC = "https://rpc.lens.dev"; // Replace with the correct Lens Sepolia RPC
 
-const sepoliaWeb3 = new Web3(new Web3.providers.HttpProvider(SEPOLIA_RPC));
-const lensWeb3 = new Web3(new Web3.providers.HttpProvider(LENS_RPC));
+const sepoliaWeb3 = new Web3(new HttpProvider(SEPOLIA_RPC));
+const lensWeb3 = new Web3(new HttpProvider(LENS_RPC));
 
 // Contract Addresses (Replace with actual addresses)
 const BRIDGE_CONTRACT_ADDRESS = "0xBridgeContractAddress"; // Update with actual bridge contract
@@ -24,42 +25,50 @@ const bridgeContract = new sepoliaWeb3.eth.Contract(BRIDGE_ABI, BRIDGE_CONTRACT_
 const faucetContract = new lensWeb3.eth.Contract(FAUCET_ABI, FAUCET_CONTRACT_ADDRESS);
 
 async function bridgeFunds(wallet) {
-    const account = sepoliaWeb3.eth.accounts.privateKeyToAccount(wallet.privateKey);
-    sepoliaWeb3.eth.accounts.wallet.add(account);
+    try {
+        const account = sepoliaWeb3.eth.accounts.privateKeyToAccount(wallet.privateKey);
+        sepoliaWeb3.eth.accounts.wallet.add(account);
 
-    const amountToBridge = sepoliaWeb3.utils.toWei("0.01", "ether"); // Adjust amount if needed
-    const gasPrice = await sepoliaWeb3.eth.getGasPrice();
+        const amountToBridge = sepoliaWeb3.utils.toWei("0.01", "ether"); // Adjust amount if needed
+        const gasPrice = await sepoliaWeb3.eth.getGasPrice();
 
-    const tx = {
-        from: account.address,
-        to: BRIDGE_CONTRACT_ADDRESS,
-        gas: 200000, // Adjust gas limit
-        gasPrice: gasPrice,
-        data: bridgeContract.methods.bridgeTokens(amountToBridge).encodeABI()
-    };
+        const tx = {
+            from: account.address,
+            to: BRIDGE_CONTRACT_ADDRESS,
+            gas: 200000, // Adjust gas limit
+            gasPrice: gasPrice,
+            data: bridgeContract.methods.bridgeTokens(amountToBridge).encodeABI()
+        };
 
-    const signedTx = await account.signTransaction(tx);
-    const receipt = await sepoliaWeb3.eth.sendSignedTransaction(signedTx.rawTransaction);
-    console.log(`✅ Bridged funds for ${wallet.address}: ${receipt.transactionHash}`);
+        const signedTx = await account.signTransaction(tx);
+        const receipt = await sepoliaWeb3.eth.sendSignedTransaction(signedTx.rawTransaction);
+        console.log(`✅ Bridged funds for ${wallet.address}: ${receipt.transactionHash}`);
+    } catch (error) {
+        console.error(`❌ Error bridging funds for ${wallet.address}:`, error);
+    }
 }
 
 async function claimFaucet(wallet) {
-    const account = lensWeb3.eth.accounts.privateKeyToAccount(wallet.privateKey);
-    lensWeb3.eth.accounts.wallet.add(account);
+    try {
+        const account = lensWeb3.eth.accounts.privateKeyToAccount(wallet.privateKey);
+        lensWeb3.eth.accounts.wallet.add(account);
 
-    const gasPrice = await lensWeb3.eth.getGasPrice();
+        const gasPrice = await lensWeb3.eth.getGasPrice();
 
-    const tx = {
-        from: account.address,
-        to: FAUCET_CONTRACT_ADDRESS,
-        gas: 150000, // Adjust gas limit
-        gasPrice: gasPrice,
-        data: faucetContract.methods.claimTokens().encodeABI()
-    };
+        const tx = {
+            from: account.address,
+            to: FAUCET_CONTRACT_ADDRESS,
+            gas: 150000, // Adjust gas limit
+            gasPrice: gasPrice,
+            data: faucetContract.methods.claimTokens().encodeABI()
+        };
 
-    const signedTx = await account.signTransaction(tx);
-    const receipt = await lensWeb3.eth.sendSignedTransaction(signedTx.rawTransaction);
-    console.log(`✅ Claimed faucet for ${wallet.address}: ${receipt.transactionHash}`);
+        const signedTx = await account.signTransaction(tx);
+        const receipt = await lensWeb3.eth.sendSignedTransaction(signedTx.rawTransaction);
+        console.log(`✅ Claimed faucet for ${wallet.address}: ${receipt.transactionHash}`);
+    } catch (error) {
+        console.error(`❌ Error claiming faucet for ${wallet.address}:`, error);
+    }
 }
 
 async function main() {
